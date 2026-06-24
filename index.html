@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>運転免許 学科試験 模擬クイズ</title>
+    <style>
+        :root { --primary: #1B365D; --background: #f7f9fa; }
+        body { font-family: sans-serif; background-color: var(--background); color: #333; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .quiz-container { background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 600px; padding: 30px; box-sizing: border-box; }
+        .progress-bar { height: 6px; background: #e0e0e0; border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
+        .question-number { font-size: 0.9rem; color: #666; font-weight: bold; margin-bottom: 10px; }
+        .question-text { font-size: 1.2rem; font-weight: bold; line-height: 1.5; margin-bottom: 30px; min-height: 70px; }
+        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .btn-opt { border: 2px solid #e0e0e0; background: white; border-radius: 12px; padding: 20px; font-size: 1.8rem; cursor: pointer; }
+        .btn-opt:hover { background: #f0f4f8; }
+        .feedback { display: none; padding: 20px; border-radius: 12px; margin-top: 20px; }
+        .feedback.correct { display: block; background: #e2efda; color: #375623; }
+        .feedback.wrong { display: block; background: #fce4d6; color: #c65911; }
+        .btn-next { display: none; width: 100%; background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        .input-group { margin: 20px 0; }
+        .input-name { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
+        .result-screen { display: none; text-align: center; }
+        .score-circle { width: 120px; height: 120px; border-radius: 50%; background: var(--primary); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 20px auto; font-size: 1.5rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="quiz-container">
+    <div id="start-screen">
+        <h2>運転免許 模擬クイズ</h2>
+        <p>あなたの名前かニックネームを入力してね！</p>
+        <div class="input-group">
+            <input type="text" id="nickname" class="input-name" placeholder="例：がくせい太郎">
+        </div>
+        <button class="btn-next" style="display:block;" onclick="startQuiz()">クイズを始める</button>
+    </div>
+
+    <div id="quiz-screen" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+        <div class="question-number" id="q-num"></div>
+        <div class="question-text" id="q-text"></div>
+        
+        <div class="options">
+            <button class="btn-opt" onclick="answer('⭕')">⭕</button>
+            <button class="btn-opt" onclick="answer('❌')">❌</button>
+        </div>
+
+        <div class="feedback" id="feedback-box">
+            <div id="feedback-status" style="font-weight:bold; margin-bottom:8px;"></div>
+            <div id="feedback-text"></div>
+        </div>
+
+        <button class="btn-next" id="btn-next" onclick="nextQuestion()">次の問題へ</button>
+    </div>
+
+    <div id="result-screen" class="result-screen">
+        <h2>お疲れ様でした！</h2>
+        <p id="sending-msg" style="color: blue;">データを送信中...</p>
+        <div class="score-circle">
+            <span id="score-text">0 / 0</span>
+        </div>
+        <p id="result-comment" style="font-weight: bold; margin-bottom: 30px;"></p>
+        <button class="btn-next" style="display:block;" onclick="location.reload()">もう一度挑戦する</button>
+    </div>
+</div>
+
+<script>
+// ★ここにステップ1でコピーしたURLを貼り付けてね！★
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw4eG_RvzR5Q6kWGl32PCY6NHY5nOcyKIbQ1X6WgpHQr4tj7uxHyIrz5pzMeQpHkPeD/exec";
+
+const quizData = [
+    { q: "普通免許や二輪免許を受けて1年以内のものは、初心者マークをつけなければならない", a: "❌", desc: "二輪免許には初心者マークを付ける義務はありません。" },
+    { q: "横断歩道に近づいた時、横断する歩行者がいるかいないか明らかでない場合には必ず徐行しなければならない。", a: "❌", desc: "「必ず徐行」ではなく、手前で停止できるような速度に落とします。" },
+    { q: "車庫などの自動車専用の出入口から5メートル以内の場所は駐車禁止である", a: "❌", desc: "自動車専用の出入口から「3メートル以内」が駐車禁止です。" },
+    { q: "工場現場の端から5メートル以内は、駐車は禁止されているが、停車は禁止されていない。", a: "⭕", desc: "工事現場の端から5メートル以内は「駐車禁止」ですが停車はできます。" },
+    { q: "人の乗り降りのための停車であれば5分超えても駐車にならない", a: "⭕", desc: "人の乗り降りは、時間に関わらず「停車」になります。" }
+];
+
+let currentIdx = 0; let score = 0; let hasAnswered = false; let userName = "";
+
+function startQuiz() {
+    const input = document.getElementById("nickname").value.trim();
+    if(!input) { alert("名前を入力してね！"); return; }
+    userName = input;
+    document.getElementById("start-screen").style.display = "none";
+    document.getElementById("quiz-screen").style.display = "block";
+    initQuiz();
+}
+
+function initQuiz() {
+    hasAnswered = false;
+    document.getElementById("feedback-box").style.display = "none";
+    document.getElementById("btn-next").style.display = "none";
+    document.getElementById("progress").style.width = `${(currentIdx / quizData.length) * 100}%`;
+    document.getElementById("q-num").innerText = `問題 ${currentIdx + 1} / ${quizData.length}`;
+    document.getElementById("q-text").innerText = quizData[currentIdx].q;
+}
+
+function answer(userChoice) {
+    if (hasAnswered) return;
+    hasAnswered = true;
+    const currentQuiz = quizData[currentIdx];
+    const box = document.getElementById("feedback-box");
+    
+    if (userChoice === currentQuiz.a) {
+        score++;
+        box.className = "feedback correct";
+        document.getElementById("feedback-status").innerText = "🎉 正解！";
+    } else {
+        box.className = "feedback wrong";
+        document.getElementById("feedback-status").innerText = "❌ 不正解...";
+    }
+    document.getElementById("feedback-text").innerText = currentQuiz.desc;
+    document.getElementById("btn-next").style.display = "block";
+}
+
+function nextQuestion() {
+    currentIdx++;
+    if (currentIdx < quizData.length) { initQuiz(); } else { showResult(); }
+}
+
+// データをスプレッドシートに送る魔法の関数
+function sendData() {
+    fetch(WEB_APP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: userName, score: score })
+    })
+    .then(() => {
+        document.getElementById("sending-msg").innerText = "データを保存しました！";
+        document.getElementById("sending-msg").style.color = "green";
+    })
+    .catch((err) => {
+        document.getElementById("sending-msg").innerText = "エラーが起きました";
+        document.getElementById("sending-msg").style.color = "red";
+    });
+}
+
+function showResult() {
+    document.getElementById("quiz-screen").style.display = "none";
+    document.getElementById("result-screen").style.display = "block";
+    document.getElementById("score-text").innerText = `${score} / ${quizData.length}`;
+    
+    let comment = score === quizData.length ? "完璧です！" : "もう一度復習してみよう！";
+    document.getElementById("result-comment").innerText = comment;
+    
+    // 結果が出た瞬間にデータを送る
+    sendData();
+}
+</script>
+</body>
+</html>
