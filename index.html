@@ -112,9 +112,13 @@
                 <label style="margin-right:15px;"><input type="radio" name="sq3" value="1回目"> 前半（補足なし）</label>
                 <label><input type="radio" name="sq3" value="2回目"> 後半（補足あり）</label>
             </div>
-            <div class="survey-q">4. 今後、このような補足機能はあった方が良いですか？<br>
-                <label style="margin-right:15px;"><input type="radio" name="sq4" value="はい"> はい</label>
-                <label><input type="radio" name="sq4" value="いいえ"> いいえ</label>
+            <div class="survey-q">4. 練習の際、今後、このような補足機能はあった方が良いですか？<br>
+                <label style="margin-right:15px;"><input type="radio" name="sq4" value="はい" onclick="document.getElementById('sq4-reason-box').style.display='none'"> はい</label>
+                <label><input type="radio" name="sq4" value="いいえ" onclick="document.getElementById('sq4-reason-box').style.display='block'"> いいえ</label>
+            </div>
+            <div class="survey-survey-q" id="sq4-reason-box" style="display:none; background: #f1f8ff; border: 1px solid #cce5ff; padding:15px; border-radius:8px; margin-bottom:25px;">
+                💡 「いいえ」と答えた理由があれば教えてください（任意）<br>
+                <input type="text" id="sq4-reason" style="width:100%; padding:10px; margin-top:10px; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; font-size:1rem;" placeholder="例：実際の試験に近い形式（補足なし）で練習したいため、など">
             </div>
             <button class="btn-next" style="display:block; margin-top: 30px;" onclick="submitAll()">結果を送信する</button>
         </div>
@@ -135,8 +139,8 @@ const baseData = [
     { q: "横断歩道に近づいた時、横断する歩行者がいるかいないか明らかでない場合には必ず徐行しなければならない。", a: "❌", desc: "「必ず徐行」ではなく、手前で停止できる速度に落とすのが正解です（徐行は時速10キロ以下の速度）。", h: "【補足】徐行とは、すぐ停止できる速度で進行することである。『必ず』という表現は例外や条件がないか確認する。" },
     { q: "車庫などの自動車専用の出入口から5メートル以内の場所は駐車禁止である", a: "❌", desc: "5メートルではなく「3メートル以内」が駐車禁止です。", h: "【補足】車庫などの自動車専用出入口から3m以内は駐車禁止である。" },
     { q: "工場現場の端から5メートル以内は、駐車は禁止されているが、停車は禁止されていない。", a: "⭕", desc: "駐車禁止場所ですが、人の乗り降りや荷物の積み下ろしなどのための「停車」はできます。", h: "【補足】駐車とは継続的な停止をいう。" },
-    { q: "人の乗り降りのための停車であれば5分超えても駐車にならない", a: "⭕", desc: "人の乗り降りは時間の制限はありません。", h: "【補足】駐車とは継続的な停止をいう。" },
-    { q: "大型特殊免許では大型特殊自動車のほか大型自動車も運転することが出来る", a: "❌", desc: "大型自動車を運転するには大型免許が必要です。", h: "【補足】大型特殊自動車は運転できるが大型自動車は運転できない。" },
+    { q: "人の乗り降りや荷物の積み下ろしのための停車であれば5分超えても駐車にならない", a: "⭕", desc: "人の乗り降りは時間の制限はありません。", h: "【補足】駐車とは継続的な停止をいう。" },
+    { q: "大型特殊免許では大型特殊自動車のほか大型自動車も運転することが出来る", a: "❌", desc: "大型自動車を運転するには大型免許が必要です。", h: "【補足】大型特殊自動車は運転できるが大型自動車はできない。" },
     { q: "安全地帯のある停留所で止まっている路面電車の側方を通過する場合は、乗降者の有無に関係なく徐行して進むことが出来る", a: "⭕", desc: "安全地帯がある場合は、乗降客がいてもいなくても徐行して進めます。", h: "【補足】徐行とは、すぐ停止できる速度で進行することである。" },
     { q: "信号のある交差点で停止線がない場合の停止位置は、信号の直前である。", a: "❌", desc: "停止線がある場合は「停止線の直前」が停止位置ですが、停止線がない場合は信号の直前ではなく「交差点の直前」が正解です。", h: "【補足】停止線がない場合は交差点の直前で停止する。" },
     { q: "車を運転中、急ブレーキは絶対にしてはいけない。", a: "❌", desc: "人命優先のシーンにおいては危険回避のため、やむえず急ブレーキが必要な場合もあり、「絶対に」とは言えません。", h: "【補足】危険回避のためには急ブレーキが認められる。『絶対』という表現は例外がないか確認する。" },
@@ -152,7 +156,7 @@ baseData.forEach(d => quizData.push({q:d.q, a:d.a, desc:d.desc, hint:d.h}));
 
 let currentIdx = 0; let score1 = 0; let score2 = 0; let userName = ""; 
 let detailedAnswers = []; let userChoices = [];
-let currentChoice = ""; // 現在選択中の答え
+let currentChoice = ""; 
 
 function startQuiz() {
     userName = document.getElementById("nickname").value.trim() || "匿名希望";
@@ -180,7 +184,6 @@ function initQuiz() {
     else { hBox.style.display="none"; }
 }
 
-// ⭕❌を押したら、即座に判定と解説を出し、選択も切り替えられる
 function selectAnswer(choice) {
     currentChoice = choice; 
     
@@ -190,26 +193,21 @@ function selectAnswer(choice) {
     btnM.className = "btn-opt";
     btnB.className = "btn-opt";
     
-    // 選んだ方を青くする
     if(choice === '⭕') {
         btnM.className = "btn-opt selected-maru";
     } else {
         btnB.className = "btn-opt selected-batsu";
     }
     
-    // 【修正】即時に現在の選択に応じた正誤解説を表示
     const isCorrectNow = choice === quizData[currentIdx].a;
     document.getElementById("feedback-status").innerText = isCorrectNow ? "🎉 正解！" : "❌ 不正解...";
     document.getElementById("feedback-text").innerText = quizData[currentIdx].desc;
     document.getElementById("feedback-box").className = "feedback " + (isCorrectNow ? "correct" : "wrong");
     
-    // 「次へ進む」ボタンを出す
     document.getElementById("btn-next").style.display = "block";
 }
 
-// 「次へ進む」が押された瞬間に、最終的な選択をデータとして記録して次の問題へ
 function nextQuestion() {
-    // 最終的に選ばれていた答えでスコアとログを確定
     const finalCorrect = currentChoice === quizData[currentIdx].a;
     detailedAnswers.push(finalCorrect ? "⭕" : "❌");
     userChoices.push(currentChoice);
@@ -256,6 +254,9 @@ function submitAll() {
     const q2 = document.querySelector('input[name="sq2"]:checked')?.value || "未回答";
     const q3 = document.querySelector('input[name="sq3"]:checked')?.value || "非該当";
     const q4 = document.querySelector('input[name="sq4"]:checked')?.value || "未回答";
+    
+    // 追加した理由データの取得（「いいえ」の時だけ中身を取得し、それ以外は非該当とする）
+    const q4Reason = (q4 === "いいえ") ? (document.getElementById("sq4-reason").value.trim() || "未入力") : "非該当";
 
     if(q1 === "未回答" || q2 === "未回答" || q4 === "未回答") {
         alert("アンケートの回答を選択してください。");
@@ -273,7 +274,7 @@ function submitAll() {
         method: "POST", mode: "no-cors",
         body: JSON.stringify({
             name: userName, score1: score1+"/13", score2: score2+"/13",
-            detailedAnswers: detailedAnswers, ans1: q1, ans2: q2, ans3: q3, ans4: q4
+            detailedAnswers: detailedAnswers, ans1: q1, ans2: q2, ans3: q3, ans4: q4, ans4Reason: q4Reason
         })
     }).then(() => {
         document.getElementById("sending-msg").innerText = "✨ 送信完了しました！";
